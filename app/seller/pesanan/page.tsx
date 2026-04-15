@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useAppStore } from "@/lib/useCartStoreSeller";
+import { useAppStore } from "@/store/useCartStoreSeller";
 
 function fmtTimer(sec: number) {
   if (sec <= 0) return "WAKTU HABIS";

@@ -1,7 +1,7 @@
 "use client";
 import BuyerHeader from "@/components/buyer/Header";
 import { PRODUK_LIST, TOKO_LIST, formatRupiah } from "@/lib/dummyData";
-import { useCartStore } from "@/lib/useCartStore";
+import { useCartStore } from "@/store/useCartStore";
 import { useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 

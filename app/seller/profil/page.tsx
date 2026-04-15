@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useAppStore } from "@/lib/useCartStoreSeller";
+import { useAppStore } from "@/store/useCartStoreSeller";
 
 const ratingData = [
   { bintang: 5, jumlah: 437 },

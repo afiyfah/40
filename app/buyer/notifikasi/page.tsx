@@ -1,6 +1,6 @@
 "use client";
 import BuyerHeader from "@/components/buyer/Header";
-import { useNotifStore, Notif } from "@/lib/useNotifStore";
+import { useNotifStore, Notif } from "@/store/useNotifStore";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 

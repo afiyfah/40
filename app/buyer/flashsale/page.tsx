@@ -2,7 +2,7 @@
 import BuyerHeader from "@/components/buyer/Header";
 import { useState, useEffect } from "react";
 import { FLASH_SALE_ITEMS, FlashSaleItem, formatRupiah } from "@/lib/dummyData";
-import { useCartStore } from "@/lib/useCartStore";
+import { useCartStore } from "@/store/useCartStore";
 import Link from "next/link";
 
 const TIME_SLOTS = [

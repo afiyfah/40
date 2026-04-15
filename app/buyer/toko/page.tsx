@@ -1,97 +1,273 @@
 "use client";
 import BuyerHeader from "@/components/buyer/Header";
+import { useCartStore } from "@/store/useCartStore";
+import { TOKO_LIST, PRODUK_LIST, TOKO_MENU_DATA, formatRupiah, type Product } from "@/lib/dummyData";
+import { Suspense, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
-import { MASTER_PRODUK, formatRupiah } from "@/lib/data";
 
-export default function ProfilTokoPage() {
-  const [favShop, setFavShop] = useState(false);
-  const [likedMenus, setLikedMenus] = useState<Set<number>>(new Set());
+const MENU_TABS = ["Semua Menu", "Terlaris", "Top Rating"] as const;
 
-  const toggleMenuHeart = (id: number, e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    setLikedMenus((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  };
+// Small inline menu card that matches the screenshot design
+function MenuCard({ p }: { p: Product }) {
+  const { addItem, toggleFavorite, isFavorite } = useCartStore();
+  const fav = isFavorite(p.id);
 
   return (
-    <div className="bg-gray-50">
-      <BuyerHeader />
-      <div className="max-w-6xl mx-auto p-4 md:p-8">
-        {/* Store Profile Card */}
-        <div className="bg-[#F1F3E9] rounded-2xl p-6 mb-6 shadow-sm border border-gray-100 relative">
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white shadow-md bg-orange-50 flex items-center justify-center text-5xl">
-              🍗
-            </div>
-            <div className="flex-1 text-center md:text-left">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Ayam Goreng 39</h1>
-              <div className="flex items-center justify-center md:justify-start gap-1 mb-4 text-yellow-400 text-2xl">
-                {[...Array(5)].map((_, i) => <i key={i} className="ri-star-s-fill" />)}
-                <span className="ml-2 bg-gray-600 text-white text-xs px-1.5 py-0.5 rounded-full">5</span>
-              </div>
-              <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                <button className="bg-[#B59D74] text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-[#a38c65]">
-                  <i className="ri-map-pin-line" /> Menuju Lokasi
-                </button>
-                <Link href="/buyer/chat-toko" className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50">
-                  <i className="ri-chat-3-line" /> Hubungi Penjual
-                </Link>
-                <button onClick={() => setFavShop(!favShop)}
-                  className={`bg-white border border-gray-300 p-2 rounded-lg transition ${favShop ? "text-red-500 border-red-200" : "text-gray-400 hover:text-red-500"}`}>
-                  <i className={`${favShop ? "ri-heart-3-fill" : "ri-heart-3-line"} text-xl`} />
-                </button>
-              </div>
-            </div>
-            <div className="absolute top-6 right-6">
-              <span className="bg-white border border-yellow-200 text-green-600 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse inline-block" />
-                Reservasi
-              </span>
-            </div>
+    <Link href={`/product/${p.id}`} style={{ textDecoration: "none" }}>
+      <div
+        style={{
+          background: "white", borderRadius: 16,
+          boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
+          border: "1px solid #f1f0ee",
+          overflow: "hidden", cursor: "pointer",
+          transition: "all 0.22s",
+        }}
+        onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = "translateY(-3px)"; el.style.boxShadow = "0 8px 24px rgba(0,0,0,0.13)"; }}
+        onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = ""; el.style.boxShadow = "0 2px 12px rgba(0,0,0,0.07)"; }}
+      >
+        {/* Badge */}
+        {p.badge === "best-seller" && (
+          <div style={{ position: "absolute", top: 0, left: 0, zIndex: 10, background: "linear-gradient(135deg,#EE8F36,#ff6b00)", color: "white", fontSize: 9, fontWeight: 800, padding: "4px 12px 4px 8px", clipPath: "polygon(0 0,100% 0,88% 100%,0 100%)", borderRadius: "12px 0 0 0" }}>
+            ⭐ BEST SELLER
           </div>
-
-          <div className="flex gap-8 mt-10 border-b border-gray-300">
-            <button className="pb-2 px-4 border-b-2 border-gray-800 font-bold text-gray-800">Home</button>
-            <Link href="/buyer/toko/menu" className="pb-2 px-4 text-gray-500 hover:text-gray-800 transition">All Menu</Link>
+        )}
+        {p.badge === "new" && (
+          <div style={{ position: "absolute", top: 0, left: 0, zIndex: 10, background: "linear-gradient(135deg,#22C55E,#16a34a)", color: "white", fontSize: 9, fontWeight: 800, padding: "4px 12px 4px 8px", clipPath: "polygon(0 0,100% 0,88% 100%,0 100%)", borderRadius: "12px 0 0 0" }}>
+            ✨ NEW
           </div>
+        )}
+        {/* Image */}
+        <div style={{ position: "relative", height: 180, overflow: "hidden" }}>
+          <img src={p.img} alt={p.nama} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.4s" }}
+            onMouseEnter={e => ((e.target as HTMLImageElement).style.transform = "scale(1.06)")}
+            onMouseLeave={e => ((e.target as HTMLImageElement).style.transform = "scale(1)")} />
+          {/* Fav overlay */}
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); toggleFavorite(p.id); }}
+            style={{ position: "absolute", top: 10, right: 10, background: "rgba(255,255,255,0.92)", backdropFilter: "blur(4px)", border: "none", borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.13)", transition: "transform 0.15s" }}
+            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.transform = "scale(1.15)")}
+            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.transform = "scale(1)")}
+          >
+            <i className={fav ? "ri-heart-3-fill" : "ri-heart-3-line"} style={{ fontSize: 17, color: fav ? "#ef4444" : "#9ca3af" }} />
+          </button>
         </div>
-
-        {/* Description */}
-        <div className="mb-10 text-gray-500 text-justify">
-          <p>Selamat datang di Ayam Goreng 39! Kami menyajikan ayam goreng dengan bumbu rempah khas yang telah melayani pelanggan setia selama lebih dari 10 tahun. Nikmati cita rasa autentik dengan bahan-bahan segar setiap harinya.</p>
-        </div>
-
-        {/* Rekomendasi Menu */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-[#88601B]">Rekomendasi</h2>
-            <Link href="/buyer/toko/menu" className="text-[#88601B] text-sm font-semibold flex items-center gap-1 hover:underline">
-              Lihat Selengkapnya <i className="ri-chevron-right-line text-xs" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {MASTER_PRODUK.slice(0, 4).map((p) => (
-              <Link key={p.id} href={`/buyer/detail-menu?id=${p.id}`}
-                className="block rounded-2xl overflow-hidden shadow-sm p-3 active:scale-95 transition"
-                style={{ background: "#f3f3f3", boxShadow: "0px 10px 0px #e9e9e9" }}>
-                <div className="w-full h-32 md:h-40 rounded-xl mb-3 bg-orange-50 flex items-center justify-center text-5xl">🍗</div>
-                <h3 className="font-bold text-gray-800 text-sm md:text-base mb-1">{p.nama}</h3>
-                <p className="text-green-600 font-bold text-base mb-3">{formatRupiah(p.harga)}</p>
-                <div className="flex items-center justify-between text-[10px] text-gray-400 border-t pt-3">
-                  <span>10RB+ terjual</span>
-                  <span>240m | 15min</span>
-                </div>
-                <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-500">
-                  <button onClick={(e) => toggleMenuHeart(p.id, e)}>
-                    <i className={`${likedMenus.has(p.id) ? "ri-heart-3-fill text-red-500" : "ri-heart-3-line"} text-sm cursor-pointer transition-all`} />
-                  </button>
-                  <span>Disukai oleh {p.suka + (likedMenus.has(p.id) ? 1 : 0)}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
+        {/* Info */}
+        <div style={{ padding: "12px 14px 14px" }}>
+          <p style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.nama}</p>
+          <p style={{ color: "#16a34a", fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{formatRupiah(p.harga)}</p>
+          <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 6 }}>{p.terjual} terjual | {p.jarak} | {p.waktu}</div>
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); toggleFavorite(p.id); }}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 4 }}
+          >
+            <i className={fav ? "ri-heart-3-fill" : "ri-heart-3-line"} style={{ fontSize: 13, color: fav ? "#ef4444" : "#d1d5db" }} />
+            <span style={{ fontSize: 10, color: "#9ca3af" }}>Disukai oleh {p.suka + (fav ? 1 : 0)}</span>
+          </button>
         </div>
       </div>
+    </Link>
+  );
+}
+
+function ProfilTokoContent() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const tokoId = Number(params.get("id")) || 5;
+  const toko = TOKO_LIST.find(t => t.id === tokoId) || TOKO_LIST[4]; // default Ayam Goreng 39
+
+  const { toggleFavorite, isFavorite } = useCartStore();
+  const favToko = isFavorite(-toko.id);
+
+  const [activeTab, setActiveTab] = useState<"Home" | "All Menu">("Home");
+  const [menuTab, setMenuTab] = useState<typeof MENU_TABS[number]>("Semua Menu");
+
+  // Get products for this toko — use TOKO_MENU_DATA if available, else fallback to PRODUK_LIST
+  const tokoMenuData = TOKO_MENU_DATA.find(d => d.tokoId === tokoId);
+  const allTokoProducts: Product[] = tokoMenuData
+    ? tokoMenuData.produk
+    : PRODUK_LIST.filter(p => p.tokoId === tokoId);
+
+  // Rekomendasi = terlaris or just first batch
+  const rekomendasiProduk = allTokoProducts
+    .filter(p => p.type === "terlaris" || p.badge === "best-seller")
+    .slice(0, 8)
+    .concat(allTokoProducts.slice(0, 8))
+    .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
+    .slice(0, 8);
+
+  // All Menu filtered by tab
+  const filteredMenu = allTokoProducts.filter(p => {
+    if (menuTab === "Terlaris") return p.type === "terlaris";
+    if (menuTab === "Top Rating") return p.rating >= 4.8;
+    return true; // Semua Menu
+  });
+
+  return (
+    <div style={{ background: "#F5F4F0", minHeight: "100vh" }}>
+      <BuyerHeader />
+
+      <main style={{ maxWidth: 1280, margin: "0 auto", padding: "28px 32px 80px" }}>
+
+        {/* ── Store Profile Card (double-card design) ── */}
+        <div style={{ marginBottom: 32, borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+          {/* Background card */}
+          <div style={{ background: "#F1F3E9", padding: "28px 32px 0", position: "relative" }}>
+
+            {/* Reservasi badge top-right */}
+            <div style={{ position: "absolute", top: 24, right: 28 }}>
+              <div style={{ background: "white", border: "1.5px solid #d1fae5", borderRadius: 999, padding: "7px 18px", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#22C55E", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <i className="ri-check-line" style={{ color: "white", fontSize: 12 }} />
+                </div>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#16a34a" }}>Reservasi</span>
+              </div>
+            </div>
+
+            {/* Profile row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 24, paddingBottom: 24 }}>
+              {/* Avatar */}
+              <div style={{ width: 110, height: 110, borderRadius: "50%", overflow: "hidden", border: "4px solid white", boxShadow: "0 4px 20px rgba(0,0,0,0.14)", flexShrink: 0 }}>
+                <img
+                  src={toko.avatar || toko.img}
+                  alt={toko.nama}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={e => {
+                    const el = e.target as HTMLImageElement;
+                    el.style.display = "none";
+                    (el.parentElement as HTMLDivElement).style.background = "#BFA370";
+                    (el.parentElement as HTMLDivElement).innerHTML = `<span style="color:white;font-size:36px;font-weight:900;display:flex;align-items:center;justify-content:center;width:100%;height:100%">${toko.nama[0]}</span>`;
+                  }}
+                />
+              </div>
+
+              {/* Info */}
+              <div style={{ flex: 1 }}>
+                <h1 style={{ fontSize: 30, fontWeight: 900, color: "#1a1a1a", marginBottom: 8 }}>{toko.nama}</h1>
+                {/* Stars */}
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 18 }}>
+                  {[...Array(5)].map((_, i) => (
+                    <i key={i} className="ri-star-s-fill" style={{ fontSize: 24, color: i < Math.floor(toko.rating) ? "#EAB308" : "#e5e7eb" }} />
+                  ))}
+                  <span style={{ background: "#6b7280", color: "white", fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999, marginLeft: 4 }}>{toko.rating}</span>
+                </div>
+                {/* Action buttons */}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <button style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 20px", background: "#BFA370", color: "white", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = "#8E754A")}
+                    onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = "#BFA370")}>
+                    <i className="ri-navigation-fill" style={{ fontSize: 14 }} /> Menuju Lokasi
+                  </button>
+                  <Link href="/buyer/chat-toko" style={{ textDecoration: "none" }}>
+                    <button style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 20px", background: "white", color: "#555", border: "1.5px solid #ddd", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                      onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = "#f9f5f0")}
+                      onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = "white")}>
+                      <i className="ri-chat-3-line" style={{ color: "#BFA370" }} /> Hubungi Penjual
+                    </button>
+                  </Link>
+                  {/* Love button */}
+                  <button
+                    onClick={() => toggleFavorite(-toko.id)}
+                    style={{ padding: "8px 14px", background: "white", border: `1.5px solid ${favToko ? "#fecaca" : "#ddd"}`, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s", fontSize: 13, fontWeight: 600, color: favToko ? "#ef4444" : "#9ca3af" }}
+                    onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.borderColor = "#fecaca"; el.style.color = "#ef4444"; }}
+                    onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.borderColor = favToko ? "#fecaca" : "#ddd"; el.style.color = favToko ? "#ef4444" : "#9ca3af"; }}
+                  >
+                    <i className={favToko ? "ri-heart-3-fill" : "ri-heart-3-line"} style={{ fontSize: 18 }} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Tab nav inside the card */}
+            <div style={{ display: "flex", borderTop: "1.5px solid #ddd9ce", marginTop: 0 }}>
+              {(["Home", "All Menu"] as const).map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  style={{ padding: "14px 28px", fontSize: 15, fontWeight: activeTab === tab ? 700 : 400, color: activeTab === tab ? "#1a1a1a" : "#6b7280", background: "none", border: "none", cursor: "pointer", borderBottom: activeTab === tab ? "2.5px solid #1a1a1a" : "2.5px solid transparent", marginBottom: -1, transition: "all 0.2s", fontFamily: "Poppins,sans-serif" }}>
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── HOME TAB ── */}
+        {activeTab === "Home" && (
+          <>
+            {/* Description */}
+            <p style={{ color: "#6b7280", fontSize: 15, lineHeight: 1.8, marginBottom: 40, textAlign: "justify", maxWidth: 900 }}>
+              {toko.deskripsi || "Selamat datang! Kami menyajikan menu-menu pilihan terbaik dengan bahan segar berkualitas tinggi. Pesan sekarang dan nikmati cita rasa autentik kami!"}
+            </p>
+
+            {/* Rekomendasi – horizontal scroll */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: "#BFA370" }}>Rekomendasi</h2>
+                <button onClick={() => setActiveTab("All Menu")}
+                  style={{ display: "flex", alignItems: "center", gap: 4, color: "#BFA370", fontSize: 13, fontWeight: 600, background: "none", border: "none", cursor: "pointer", fontFamily: "Poppins,sans-serif" }}>
+                  Lihat Selengkapnya <i className="ri-arrow-right-s-line" style={{ fontSize: 16 }} />
+                </button>
+              </div>
+              <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 12 }} className="no-scrollbar">
+                {(rekomendasiProduk.length > 0 ? rekomendasiProduk : allTokoProducts.slice(0, 6)).map(p => (
+                  <div key={p.id} style={{ minWidth: 260, flexShrink: 0, position: "relative" }}>
+                    <MenuCard p={p} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── ALL MENU TAB ── */}
+        {activeTab === "All Menu" && (
+          <>
+            {/* Tab filter row */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: 32 }}>
+              {MENU_TABS.map(tab => (
+                <button key={tab} onClick={() => setMenuTab(tab)}
+                  style={{ padding: "10px 28px", borderRadius: 999, border: menuTab === tab ? "none" : "1.5px solid #e5e7eb", background: menuTab === tab ? "linear-gradient(135deg,#BFA370,#8E754A)" : "white", color: menuTab === tab ? "white" : "#6b7280", fontSize: 14, fontWeight: menuTab === tab ? 700 : 400, cursor: "pointer", fontFamily: "Poppins,sans-serif", transition: "all 0.2s", boxShadow: menuTab === tab ? "0 4px 16px rgba(191,163,112,0.4)" : "none" }}>
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Product grid */}
+            {filteredMenu.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, position: "relative" }}>
+                {filteredMenu.map(p => (
+                  <div key={p.id} style={{ position: "relative" }}>
+                    <MenuCard p={p} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", padding: "64px 0", color: "#9ca3af" }}>
+                <i className="ri-restaurant-line" style={{ fontSize: 52, display: "block", marginBottom: 12 }} />
+                <p style={{ fontSize: 15 }}>Belum ada menu di kategori ini</p>
+                <button onClick={() => setMenuTab("Semua Menu")} style={{ marginTop: 16, padding: "8px 24px", borderRadius: 10, border: "1.5px solid #BFA370", background: "none", color: "#BFA370", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins,sans-serif" }}>
+                  Lihat Semua Menu
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </main>
     </div>
+  );
+}
+
+export default function ProfilTokoPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#F5F4F0" }}>
+        <div style={{ textAlign: "center", color: "#BFA370" }}>
+          <i className="ri-loader-4-line" style={{ fontSize: 40, display: "block", marginBottom: 12, animation: "spin 1s linear infinite" }} />
+          <p style={{ fontSize: 14 }}>Memuat profil toko...</p>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    }>
+      <ProfilTokoContent />
+    </Suspense>
   );
 }

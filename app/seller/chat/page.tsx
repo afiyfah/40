@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useAppStore, ChatMessage } from "@/lib/useCartStoreSeller";
+import { useAppStore, ChatMessage } from "@/store/useCartStoreSeller";
 
 export default function ChatPage() {
   const { contacts, activeContactId, setActiveContact, sendMessage } = useAppStore();

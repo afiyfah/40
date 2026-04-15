@@ -1,6 +1,6 @@
 "use client";
 import { Toko } from "@/lib/dummyData";
-import { useCartStore } from "@/lib/useCartStore";
+import { useCartStore } from "@/store/useCartStore";
 import Link from "next/link";
 
 interface TokoCardProps { toko: Toko; }

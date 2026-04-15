@@ -3,23 +3,41 @@ import BuyerHeader from "@/components/buyer/Header";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatRupiah, VOUCHERS } from "@/lib/dummyData";
-
-interface CartRow { nama: string; varian: string; harga: number; qty: number; }
-const CART: CartRow[] = [
-  { nama: "Ayam Paha Atas", varian: "Super Pedas", harga: 17000, qty: 1 },
-  { nama: "Ayam Paha Bandung", varian: "Super Pedas Jeletot", harga: 18000, qty: 3 },
-];
+import { useCartStore } from "@/store/useCartStore";
 
 export default function KonfirmasiPage() {
   const router = useRouter();
-  const [cart, setCart] = useState(CART);
-  const [tab, setTab] = useState<"ambil"|"reservasi">("ambil");
+  const { items: cartItems, selectedStore } = useCartStore();
+
+  // Get only checked items from the selected store
+  const checkedItems = cartItems.filter(i => i.checked);
+  const storeId = selectedStore();
+  const storeItems = storeId && storeId !== -1
+    ? checkedItems.filter(i => i.tokoId === storeId)
+    : checkedItems;
+
+  // Local cart state (editable copy for this page)
+  const [cart, setCart] = useState(
+    storeItems.map(i => ({
+      id: i.id,
+      nama: i.nama,
+      varian: i.varian,
+      harga: i.harga,
+      qty: i.qty,
+      img: i.img,
+    }))
+  );
+
+  const tokoNama = storeItems[0]?.toko || "Toko";
+
+  const [tab, setTab] = useState<"ambil" | "reservasi">("ambil");
   const [showVoucher, setShowVoucher] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState<typeof VOUCHERS[0] | null>(null);
   const [voucherCode, setVoucherCode] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const changeQty = (i: number, d: number) => setCart(prev => prev.map((item, idx) => idx === i ? { ...item, qty: Math.max(1, item.qty + d) } : item));
+  const changeQty = (i: number, d: number) =>
+    setCart(prev => prev.map((item, idx) => idx === i ? { ...item, qty: Math.max(1, item.qty + d) } : item));
   const removeItem = (i: number) => setCart(prev => prev.filter((_, idx) => idx !== i));
 
   const subtotal = cart.reduce((a, c) => a + c.harga * c.qty, 0);
@@ -47,7 +65,6 @@ export default function KonfirmasiPage() {
               <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1a1a" }}>Pilih atau Masukkan Voucher</h2>
             </div>
 
-            {/* Code input */}
             <div style={{ display: "flex", gap: 12, padding: "24px 32px 16px", background: "white", borderBottom: "1px solid #f1f0ee" }}>
               <input value={voucherCode} onChange={e => setVoucherCode(e.target.value)} placeholder="Masukan Kode Voucher"
                 style={{ flex: 1, border: "1.5px solid #e9e7e3", borderRadius: 12, padding: "14px 20px", fontSize: 15, outline: "none", fontFamily: "Poppins, sans-serif", color: "#333" }}
@@ -59,7 +76,6 @@ export default function KonfirmasiPage() {
               </button>
             </div>
 
-            {/* Voucher grid */}
             <div style={{ padding: "20px 32px", maxHeight: "50vh", overflowY: "auto" }} className="no-scrollbar">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 {VOUCHERS.map(v => {
@@ -72,18 +88,13 @@ export default function KonfirmasiPage() {
                         display: "flex", cursor: "pointer", transition: "all 0.2s",
                         boxShadow: isSelected ? "0 4px 16px rgba(191,163,112,0.3)" : "0 2px 8px rgba(0,0,0,0.06)",
                       }}>
-                      {/* Left color strip */}
                       <div style={{ width: 6, background: isSelected ? "#BFA370" : "#ede9e0", flexShrink: 0, transition: "background 0.2s" }} />
-                      {/* Image */}
                       <div style={{ width: 90, height: 90, flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "#fef9f0" }}>
                         <img src={v.img} alt={v.judul} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       </div>
-                      {/* Divider */}
-                      <div style={{ width: 1, background: "#ede9e0", flexShrink: 0, margin: "12px 0", borderLeft: "2px dashed #ede9e0", background: "none" }} />
-                      {/* Content */}
+                      <div style={{ width: 1, background: "#ede9e0", flexShrink: 0, margin: "12px 0", borderLeft: "2px dashed #ede9e0" }} />
                       <div style={{ flex: 1, padding: "12px 16px", borderLeft: "2px dashed #ede9e0" }}>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                          {/* Radio */}
                           <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${isSelected ? "#BFA370" : "#d1d5db"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
                             {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#BFA370" }} />}
                           </div>
@@ -118,196 +129,209 @@ export default function KonfirmasiPage() {
           <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1a1a1a" }}>Konfirmasi Pembayaran</h1>
         </div>
 
-        {/* Order Summary Card */}
-        <div style={{ background: "white", borderRadius: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.06)", marginBottom: 20, overflow: "hidden" }}>
-          {/* Header */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 130px 130px 120px 40px", padding: "16px 24px", borderBottom: "1px solid #f5f5f5", alignItems: "center", gap: 12 }}>
-            <span style={{ color: "#BFA370", fontWeight: 800, fontSize: 20 }}>Ringkasan Pesanan</span>
-            <span style={{ textAlign: "center", fontSize: 13, fontWeight: 500, color: "#555" }}>Harga Satuan</span>
-            <span style={{ textAlign: "center", fontSize: 13, fontWeight: 500, color: "#555" }}>Kuantitas</span>
-            <span style={{ textAlign: "right", fontSize: 13, fontWeight: 500, color: "#555" }}>Total</span>
-            <span style={{ textAlign: "center", fontSize: 13, fontWeight: 500, color: "#555" }}>Ubah</span>
+        {cart.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "80px 0", color: "#9ca3af" }}>
+            <i className="ri-shopping-bag-line" style={{ fontSize: 64, display: "block", marginBottom: 16 }} />
+            <p style={{ fontSize: 16, fontWeight: 500 }}>Tidak ada item yang dipilih</p>
+            <button onClick={() => router.push("/buyer/keranjang")}
+              style={{ color: "#BFA370", fontSize: 13, fontWeight: 600, marginTop: 12, background: "none", border: "none", cursor: "pointer" }}>
+              ← Kembali ke Keranjang
+            </button>
           </div>
+        ) : (
+          <>
+            {/* Order Summary Card */}
+            <div style={{ background: "white", borderRadius: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.06)", marginBottom: 20, overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 130px 130px 120px 40px", padding: "16px 24px", borderBottom: "1px solid #f5f5f5", alignItems: "center", gap: 12 }}>
+                <span style={{ color: "#BFA370", fontWeight: 800, fontSize: 20 }}>Ringkasan Pesanan</span>
+                <span style={{ textAlign: "center", fontSize: 13, fontWeight: 500, color: "#555" }}>Harga Satuan</span>
+                <span style={{ textAlign: "center", fontSize: 13, fontWeight: 500, color: "#555" }}>Kuantitas</span>
+                <span style={{ textAlign: "right", fontSize: 13, fontWeight: 500, color: "#555" }}>Total</span>
+                <span style={{ textAlign: "center", fontSize: 13, fontWeight: 500, color: "#555" }}>Ubah</span>
+              </div>
 
-          {/* Store row */}
-          <div style={{ padding: "12px 24px", background: "#fafaf9", borderBottom: "1px solid #f5f5f5", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 18 }}>🏪</span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>Ayam Goreng 39</span>
-          </div>
+              {/* Store row */}
+              <div style={{ padding: "12px 24px", background: "#fafaf9", borderBottom: "1px solid #f5f5f5", display: "flex", alignItems: "center", gap: 10 }}>
+                <i className="ri-store-2-line" style={{ color: "#BFA370", fontSize: 16 }} />
+                <span style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{tokoNama}</span>
+              </div>
 
-          {/* Items */}
-          {cart.map((item, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 130px 130px 120px 40px", padding: "20px 24px", borderBottom: "1px solid #f8f8f8", alignItems: "center", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ width: 64, height: 64, borderRadius: 12, overflow: "hidden" }}>
-                  <img src="https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=200&q=70" alt={item.nama} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              {/* Items */}
+              {cart.map((item, i) => (
+                <div key={item.id} style={{ display: "grid", gridTemplateColumns: "1fr 130px 130px 120px 40px", padding: "20px 24px", borderBottom: "1px solid #f8f8f8", alignItems: "center", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ width: 64, height: 64, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "#f5f0ea" }}>
+                      <img src={item.img || "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=200&q=70"} alt={item.nama} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 600, color: "#1a1a1a", fontSize: 14, marginBottom: 4 }}>{item.nama}</p>
+                      <span style={{ background: "#fef9f0", border: "1px solid #BFA370", color: "#BFA370", fontSize: 10, fontWeight: 600, padding: "2px 10px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <i className="ri-edit-2-line" style={{ fontSize: 10 }} /> {item.varian}
+                      </span>
+                    </div>
+                  </div>
+                  <p style={{ color: "#BFA370", fontWeight: 700, textAlign: "center", fontSize: 14 }}>{formatRupiah(item.harga)}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+                    <button onClick={() => changeQty(i, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: "1.5px solid #e5e7eb", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      onMouseEnter={e => { const el = e.currentTarget; el.style.background = "#BFA370"; el.style.color = "white"; el.style.borderColor = "#BFA370"; }}
+                      onMouseLeave={e => { const el = e.currentTarget; el.style.background = "white"; el.style.color = "#1a1a1a"; el.style.borderColor = "#e5e7eb"; }}
+                    >−</button>
+                    <span style={{ fontWeight: 700, fontSize: 14, minWidth: 20, textAlign: "center" }}>{item.qty}</span>
+                    <button onClick={() => changeQty(i, 1)} style={{ width: 28, height: 28, borderRadius: 8, border: "1.5px solid #e5e7eb", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      onMouseEnter={e => { const el = e.currentTarget; el.style.background = "#BFA370"; el.style.color = "white"; el.style.borderColor = "#BFA370"; }}
+                      onMouseLeave={e => { const el = e.currentTarget; el.style.background = "white"; el.style.color = "#1a1a1a"; el.style.borderColor = "#e5e7eb"; }}
+                    >+</button>
+                  </div>
+                  <p style={{ color: "#BFA370", fontWeight: 700, textAlign: "right", fontSize: 14 }}>{formatRupiah(item.harga * item.qty)}</p>
+                  <div style={{ display: "flex", justifyContent: "center" }}>
+                    <button onClick={() => removeItem(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#d1d5db" }}
+                      onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = "#ef4444")}
+                      onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = "#d1d5db")}
+                    >
+                      <i className="ri-close-line" style={{ fontSize: 20 }} />
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <p style={{ fontWeight: 600, color: "#1a1a1a", fontSize: 14, marginBottom: 4 }}>{item.nama}</p>
-                  <span style={{ background: "#fef9f0", border: "1px solid #BFA370", color: "#BFA370", fontSize: 10, fontWeight: 600, padding: "2px 10px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <i className="ri-edit-2-line" style={{ fontSize: 10 }} /> {item.varian}
-                  </span>
+              ))}
+
+              {/* Catatan */}
+              <div style={{ margin: "0 24px 0", border: "1px solid #f1f0ee", borderRadius: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid #f5f5f5" }}>
+                  <i className="ri-survey-line" style={{ color: "#BFA370", fontSize: 18 }} />
+                  <span style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>Catatan untuk penjual</span>
                 </div>
+                <textarea placeholder="Tulis catatan di sini..."
+                  style={{ width: "100%", border: "none", outline: "none", padding: "12px 16px", fontSize: 13, color: "#9ca3af", fontFamily: "Poppins, sans-serif", resize: "none", height: 56, boxSizing: "border-box" }} />
               </div>
-              <p style={{ color: "#BFA370", fontWeight: 700, textAlign: "center", fontSize: 14 }}>{formatRupiah(item.harga)}</p>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-                <button onClick={() => changeQty(i, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: "1.5px solid #e5e7eb", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onMouseEnter={e => { const el = e.currentTarget; el.style.background = "#BFA370"; el.style.color = "white"; el.style.borderColor = "#BFA370"; }}
-                  onMouseLeave={e => { const el = e.currentTarget; el.style.background = "white"; el.style.color = "#1a1a1a"; el.style.borderColor = "#e5e7eb"; }}
-                >−</button>
-                <span style={{ fontWeight: 700, fontSize: 14, minWidth: 20, textAlign: "center" }}>{item.qty}</span>
-                <button onClick={() => changeQty(i, 1)} style={{ width: 28, height: 28, borderRadius: 8, border: "1.5px solid #e5e7eb", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onMouseEnter={e => { const el = e.currentTarget; el.style.background = "#BFA370"; el.style.color = "white"; el.style.borderColor = "#BFA370"; }}
-                  onMouseLeave={e => { const el = e.currentTarget; el.style.background = "white"; el.style.color = "#1a1a1a"; el.style.borderColor = "#e5e7eb"; }}
-                >+</button>
-              </div>
-              <p style={{ color: "#BFA370", fontWeight: 700, textAlign: "right", fontSize: 14 }}>{formatRupiah(item.harga * item.qty)}</p>
-              <div style={{ display: "flex", justifyContent: "center" }}>
-                <button onClick={() => removeItem(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#d1d5db" }}
-                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = "#ef4444")}
-                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = "#d1d5db")}
-                >
-                  <i className="ri-close-line" style={{ fontSize: 20 }} />
-                </button>
-              </div>
-            </div>
-          ))}
 
-          {/* Catatan */}
-          <div style={{ margin: "0 24px 0", border: "1px solid #f1f0ee", borderRadius: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid #f5f5f5" }}>
-              <i className="ri-survey-line" style={{ color: "#BFA370", fontSize: 18 }} />
-              <span style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>Catatan untuk penjual</span>
+              {/* Voucher row */}
+              <button onClick={() => setShowVoucher(true)}
+                style={{ width: "100%", margin: "12px 0", padding: "0 24px", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", height: 52, borderTop: "1px solid #f5f5f5" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <i className="ri-coupon-3-line" style={{ color: "#BFA370", fontSize: 18 }} />
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>Voucher</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {selectedVoucher ? (
+                    <span style={{ color: "#ef4444", fontWeight: 700, fontSize: 14 }}>- {formatRupiah(selectedVoucher.diskon)}</span>
+                  ) : (
+                    <span style={{ color: "#9ca3af", fontSize: 13 }}>Pilih / Masukkan Kode &gt;</span>
+                  )}
+                </div>
+              </button>
             </div>
-            <textarea placeholder="Tulis catatan di sini..."
-              style={{ width: "100%", border: "none", outline: "none", padding: "12px 16px", fontSize: 13, color: "#9ca3af", fontFamily: "Poppins, sans-serif", resize: "none", height: 56, boxSizing: "border-box" }} />
-          </div>
 
-          {/* Voucher row */}
-          <button onClick={() => setShowVoucher(true)}
-            style={{ width: "100%", margin: "12px 0", padding: "0 24px", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", height: 52, borderTop: "1px solid #f5f5f5" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <i className="ri-coupon-3-line" style={{ color: "#BFA370", fontSize: 18 }} />
-              <span style={{ fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>Voucher</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {selectedVoucher ? (
-                <span style={{ color: "#ef4444", fontWeight: 700, fontSize: 14 }}>- {formatRupiah(selectedVoucher.diskon)}</span>
-              ) : (
-                <span style={{ color: "#9ca3af", fontSize: 13 }}>Pilih / Masukkan Kode &gt;</span>
+            {/* Ambil/Reservasi tabs */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", gap: 0 }}>
+                {["ambil", "reservasi"].map(t => (
+                  <button key={t} onClick={() => setTab(t as "ambil" | "reservasi")}
+                    style={{
+                      padding: "10px 24px", borderRadius: t === "ambil" ? "12px 0 0 0" : "0 12px 0 0",
+                      border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
+                      background: tab === t ? "linear-gradient(135deg,#BFA370,#8E754A)" : "#e9dfc8",
+                      color: tab === t ? "white" : "#78450E", fontFamily: "Poppins, sans-serif",
+                    }}>{t === "ambil" ? "Ambil Ditempat" : "Reservasi"}</button>
+                ))}
+              </div>
+
+              {tab === "reservasi" && (
+                <div style={{ background: "white", border: "1px solid #f1f0ee", borderRadius: "0 12px 12px 12px", padding: "24px", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
+                  <p style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", marginBottom: 16 }}>Data Reservasi</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 16 }}>
+                    {[["Jumlah Orang", "number", "Masukkan jumlah orang"], ["Tanggal Reservasi", "date", ""], ["Pembayaran", "select", ""]].map(([label, type], i) => (
+                      <div key={i}>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#9ca3af", marginBottom: 6, textTransform: "uppercase" }}>{label}</label>
+                        {type === "select" ? (
+                          <select style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e9e7e3", borderRadius: 10, fontSize: 12, outline: "none", background: "#fafaf9", fontFamily: "Poppins, sans-serif", color: "#333" }}>
+                            <option>Bayar Penuh</option><option>DP 50%</option>
+                          </select>
+                        ) : (
+                          <input type={type} placeholder={String(label)}
+                            style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e9e7e3", borderRadius: 10, fontSize: 12, outline: "none", background: "#fafaf9", fontFamily: "Poppins, sans-serif", boxSizing: "border-box" }}
+                            onFocus={e => (e.target.style.borderColor = "#BFA370")}
+                            onBlur={e => (e.target.style.borderColor = "#e9e7e3")}
+                          />
+                        )}
+                      </div>
+                    ))}
+                    <div>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#9ca3af", marginBottom: 6, textTransform: "uppercase" }}>Waktu Reservasi</label>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <input type="time" defaultValue="08:00" style={{ flex: 1, padding: "10px 8px", border: "1.5px solid #e9e7e3", borderRadius: 10, fontSize: 11, outline: "none", background: "#fafaf9" }}
+                          onFocus={e => (e.target.style.borderColor = "#BFA370")}
+                          onBlur={e => (e.target.style.borderColor = "#e9e7e3")}
+                        />
+                        <span style={{ color: "#9ca3af" }}>-</span>
+                        <input type="time" defaultValue="20:00" style={{ flex: 1, padding: "10px 8px", border: "1.5px solid #e9e7e3", borderRadius: 10, fontSize: 11, outline: "none", background: "#fafaf9" }}
+                          onFocus={e => (e.target.style.borderColor = "#BFA370")}
+                          onBlur={e => (e.target.style.borderColor = "#e9e7e3")}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#9ca3af", marginBottom: 6, textTransform: "uppercase" }}>Keterangan</label>
+                    <textarea placeholder="Tuliskan keterangan tambahan pesanan anda"
+                      style={{ width: "100%", padding: "12px 14px", border: "1.5px solid #e9e7e3", borderRadius: 10, fontSize: 12, outline: "none", background: "#fafaf9", fontFamily: "Poppins, sans-serif", resize: "none", height: 80, boxSizing: "border-box" }}
+                      onFocus={e => (e.target.style.borderColor = "#BFA370")}
+                      onBlur={e => (e.target.style.borderColor = "#e9e7e3")}
+                    />
+                  </div>
+                </div>
               )}
             </div>
-          </button>
-        </div>
 
-        {/* Ambil/Reservasi tabs */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", gap: 0 }}>
-            {["ambil","reservasi"].map(t => (
-              <button key={t} onClick={() => setTab(t as "ambil"|"reservasi")}
-                style={{
-                  padding: "10px 24px", borderRadius: t === "ambil" ? "12px 0 0 0" : "0 12px 0 0",
-                  border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
-                  background: tab === t ? "linear-gradient(135deg,#BFA370,#8E754A)" : "#e9dfc8",
-                  color: tab === t ? "white" : "#78450E", fontFamily: "Poppins, sans-serif",
-                }}>{t === "ambil" ? "Ambil Ditempat" : "Reservasi"}</button>
-            ))}
-          </div>
-
-          {tab === "reservasi" && (
-            <div style={{ background: "white", border: "1px solid #f1f0ee", borderRadius: "0 12px 12px 12px", padding: "24px", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
-              <p style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", marginBottom: 16 }}>Data Reservasi</p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 16 }}>
-                {[["Jumlah Orang","number","Masukkan jumlah orang"],["Tanggal Reservasi","date",""],["Pembayaran","select",""]].map(([label, type], i) => (
-                  <div key={i}>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#9ca3af", marginBottom: 6, textTransform: "uppercase" }}>{label}</label>
-                    {type === "select" ? (
-                      <select style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e9e7e3", borderRadius: 10, fontSize: 12, outline: "none", background: "#fafaf9", fontFamily: "Poppins, sans-serif", color: "#333" }}>
-                        <option>Bayar Penuh</option><option>DP 50%</option>
-                      </select>
-                    ) : (
-                      <input type={type} placeholder={String(label)}
-                        style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e9e7e3", borderRadius: 10, fontSize: 12, outline: "none", background: "#fafaf9", fontFamily: "Poppins, sans-serif", boxSizing: "border-box" }}
-                        onFocus={e => (e.target.style.borderColor = "#BFA370")}
-                        onBlur={e => (e.target.style.borderColor = "#e9e7e3")}
-                      />
-                    )}
-                  </div>
-                ))}
-                <div>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#9ca3af", marginBottom: 6, textTransform: "uppercase" }}>Waktu Reservasi</label>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <input type="time" defaultValue="08:00" style={{ flex: 1, padding: "10px 8px", border: "1.5px solid #e9e7e3", borderRadius: 10, fontSize: 11, outline: "none", background: "#fafaf9" }}
-                      onFocus={e => (e.target.style.borderColor = "#BFA370")}
-                      onBlur={e => (e.target.style.borderColor = "#e9e7e3")}
-                    />
-                    <span style={{ color: "#9ca3af" }}>-</span>
-                    <input type="time" defaultValue="20:00" style={{ flex: 1, padding: "10px 8px", border: "1.5px solid #e9e7e3", borderRadius: 10, fontSize: 11, outline: "none", background: "#fafaf9" }}
-                      onFocus={e => (e.target.style.borderColor = "#BFA370")}
-                      onBlur={e => (e.target.style.borderColor = "#e9e7e3")}
-                    />
-                  </div>
+            {/* Payment Summary */}
+            <div style={{ background: "white", borderRadius: 16, padding: "20px 24px", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Pembayaran</span>
+                <div style={{ background: "#1a1a1a", borderRadius: 6, padding: "4px 10px" }}>
+                  <span style={{ color: "white", fontSize: 12, fontWeight: 800, letterSpacing: 1 }}>QRIS</span>
                 </div>
               </div>
-              <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#9ca3af", marginBottom: 6, textTransform: "uppercase" }}>Keterangan</label>
-                <textarea placeholder="Tuliskan keterangan tambahan pesanan anda"
-                  style={{ width: "100%", padding: "12px 14px", border: "1.5px solid #e9e7e3", borderRadius: 10, fontSize: 12, outline: "none", background: "#fafaf9", fontFamily: "Poppins, sans-serif", resize: "none", height: 80, boxSizing: "border-box" }}
-                  onFocus={e => (e.target.style.borderColor = "#BFA370")}
-                  onBlur={e => (e.target.style.borderColor = "#e9e7e3")}
-                />
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#555" }}>
+                  <span>Total Pesanan ({cart.length} Menu)</span>
+                  <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{formatRupiah(subtotal)}</span>
+                </div>
+                {tab === "reservasi" && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#555" }}>
+                    <span>Biaya Reservasi</span>
+                    <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{formatRupiah(reservasiBiaya)}</span>
+                  </div>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#555" }}>
+                  <span>Voucher</span>
+                  <span style={{ fontWeight: 600, color: selectedVoucher ? "#ef4444" : "#1a1a1a" }}>
+                    {selectedVoucher ? `- ${formatRupiah(voucherDiskon)}` : "Rp 0"}
+                  </span>
+                </div>
+                <div style={{ borderTop: "1px solid #f1f0ee", paddingTop: 12, display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 800, color: "#1a1a1a" }}>
+                  <span>Total</span>
+                  <span>{formatRupiah(grandTotal)}</span>
+                </div>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Payment Summary */}
-        <div style={{ background: "white", borderRadius: 16, padding: "20px 24px", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Pembayaran</span>
-            <div style={{ background: "#1a1a1a", borderRadius: 6, padding: "4px 10px" }}>
-              <span style={{ color: "white", fontSize: 12, fontWeight: 800, letterSpacing: 1 }}>QRIS</span>
+            {/* CTA */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
+              <button onClick={handleBayar} disabled={loading}
+                style={{
+                  padding: "16px 56px", borderRadius: 14, border: "none",
+                  background: loading ? "#d1d5db" : "linear-gradient(135deg,#BFA370,#8E754A)",
+                  color: "white", fontSize: 16, fontWeight: 800,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  boxShadow: loading ? "none" : "0 8px 24px rgba(191,163,112,0.4)",
+                  display: "flex", alignItems: "center", gap: 10,
+                  fontFamily: "Poppins, sans-serif", transition: "all 0.2s",
+                }}>
+                {loading ? <><i className="ri-loader-4-line" style={{ fontSize: 18, animation: "spin 1s linear infinite" }} /> Memproses...</> : <>Pesan &amp; Bayar <i className="ri-arrow-right-line" /></>}
+              </button>
             </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#555" }}>
-              <span>Total Pesanan ({cart.length} Menu)</span>
-              <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{formatRupiah(subtotal)}</span>
-            </div>
-            {tab === "reservasi" && (
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#555" }}>
-                <span>Biaya Reservasi</span>
-                <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{formatRupiah(reservasiBiaya)}</span>
-              </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#555" }}>
-              <span>Voucher</span>
-              <span style={{ fontWeight: 600, color: selectedVoucher ? "#ef4444" : "#1a1a1a" }}>
-                {selectedVoucher ? `- ${formatRupiah(voucherDiskon)}` : "Rp 0"}
-              </span>
-            </div>
-            <div style={{ borderTop: "1px solid #f1f0ee", paddingTop: 12, display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 800, color: "#1a1a1a" }}>
-              <span>Total</span>
-              <span>{formatRupiah(grandTotal)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
-          <button onClick={handleBayar} disabled={loading}
-            style={{
-              padding: "16px 56px", borderRadius: 14, border: "none",
-              background: loading ? "#d1d5db" : "linear-gradient(135deg,#BFA370,#8E754A)",
-              color: "white", fontSize: 16, fontWeight: 800,
-              cursor: loading ? "not-allowed" : "pointer",
-              boxShadow: loading ? "none" : "0 8px 24px rgba(191,163,112,0.4)",
-              display: "flex", alignItems: "center", gap: 10,
-              fontFamily: "Poppins, sans-serif", transition: "all 0.2s",
-            }}>
-            {loading ? <><i className="ri-loader-4-line" style={{ fontSize: 18, animation: "spin 1s linear infinite" }} /> Memproses...</> : <>Pesan &amp; Bayar <i className="ri-arrow-right-line" /></>}
-          </button>
-        </div>
+          </>
+        )}
       </main>
     </div>
   );

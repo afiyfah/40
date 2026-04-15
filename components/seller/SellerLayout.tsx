@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAppStore } from "@/lib/useCartStoreSeller";
+import { useAppStore } from "@/store/useCartStoreSeller";
 
 const navItems = [
   { href: "/seller/home", label: "Home", icon: "ri-home-5-line", page: "home" },

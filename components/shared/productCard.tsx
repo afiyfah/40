@@ -1,6 +1,6 @@
 "use client";
 import { Product, formatRupiah } from "@/lib/dummyData";
-import { useCartStore } from "@/lib/useCartStore";
+import { useCartStore } from "@/store/useCartStore";
 import Link from "next/link";
 
 interface ProductCardProps {

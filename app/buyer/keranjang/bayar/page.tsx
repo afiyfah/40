@@ -3,12 +3,23 @@ import BuyerHeader from "@/components/buyer/Header";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatRupiah } from "@/lib/dummyData";
+import { useCartStore } from "@/store/useCartStore";
 import Link from "next/link";
 
 export default function BayarPage() {
   const router = useRouter();
+  const { items: cartItems, selectedStore } = useCartStore();
   const [seconds, setSeconds] = useState(298);
   const [paid, setPaid] = useState(false);
+
+  // Derive merchant name and total from cart
+  const storeId = selectedStore();
+  const checkedItems = cartItems.filter(i => i.checked);
+  const storeItems = storeId && storeId !== -1
+    ? checkedItems.filter(i => i.tokoId === storeId)
+    : checkedItems;
+  const merchantName = storeItems[0]?.toko || "Merchant";
+  const grandTotal = storeItems.reduce((a, i) => a + i.harga * i.qty, 0);
 
   useEffect(() => {
     if (paid) return;
@@ -70,11 +81,9 @@ export default function BayarPage() {
                 </div>
               </div>
 
-              {/* Real QR code simulation */}
               <div style={{ background: "white", borderRadius: 12, padding: 16, marginBottom: 20, border: "1.5px dashed #e9e7e3" }}>
                 <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "auto" }}>
                   <rect width="200" height="200" fill="white" />
-                  {/* QR pattern simulation */}
                   <rect x="10" y="10" width="60" height="60" rx="4" fill="#1a1a1a" />
                   <rect x="18" y="18" width="44" height="44" rx="2" fill="white" />
                   <rect x="26" y="26" width="28" height="28" rx="1" fill="#1a1a1a" />
@@ -103,14 +112,14 @@ export default function BayarPage() {
             {/* Info */}
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", rowGap: 16, columnGap: 0 }}>
-                {[["Merchant Name","Ayam Goreng 39"],["Invoice","REG - 200119021138"]].map(([label, val]) => (
+                {[["Merchant Name", merchantName], ["Invoice", "REG - " + Date.now().toString().slice(-12)]].map(([label, val]) => (
                   <>
-                    <span key={label} style={{ fontSize: 14, color: "#9ca3af" }}>{label}</span>
-                    <span key={val} style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", textAlign: "right" }}>{val}</span>
+                    <span key={label + "-label"} style={{ fontSize: 14, color: "#9ca3af" }}>{label}</span>
+                    <span key={label + "-val"} style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", textAlign: "right" }}>{val}</span>
                   </>
                 ))}
                 <span style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", marginTop: 8 }}>Total Payment</span>
-                <span style={{ fontSize: 20, fontWeight: 900, color: "#1a1a1a", textAlign: "right", marginTop: 8 }}>{formatRupiah(71000)}</span>
+                <span style={{ fontSize: 20, fontWeight: 900, color: "#1a1a1a", textAlign: "right", marginTop: 8 }}>{formatRupiah(grandTotal || 71000)}</span>
               </div>
 
               <div style={{ background: "#fafaf9", borderRadius: 16, padding: 20, border: "1px solid #f1f0ee" }}>

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAppStore } from "@/lib/useCartStoreSeller";
+import { useAppStore } from "@/store/useCartStoreSeller";
 
 export default function TambahMenuPage() {
   const router = useRouter();

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useAppStore, Order } from "@/lib/useCartStoreSeller";
+import { useAppStore, Order } from "@/store/useCartStoreSeller";
 
 function fmtTime(sec: number): string {
   if (sec <= 0) return "HABIS";

@@ -1,107 +1,198 @@
 "use client";
 import BuyerHeader from "@/components/buyer/Header";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState, Suspense } from "react";
-import { MASTER_PRODUK, formatRupiah } from "@/lib/data";
+import { PRODUK_LIST, TOKO_MENU_DATA, formatRupiah } from "@/lib/dummyData";
+import { useCartStore } from "@/store/useCartStore";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 
-function DetailMenuContent() {
-  const searchParams = useSearchParams();
+export default function ProductDetailPage() {
+  const { id } = useParams();
   const router = useRouter();
-  const id = Number(searchParams.get("id")) || 1;
-  const produk = MASTER_PRODUK.find((p) => p.id === id) || MASTER_PRODUK[0];
-  const [qty, setQty] = useState(3);
-  const [liked, setLiked] = useState(false);
-  const [toast, setToast] = useState("");
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+  // Find in PRODUK_LIST first, then in TOKO_MENU_DATA, then fallback
+  const allMenuItems = TOKO_MENU_DATA.flatMap(t => t.produk);
+  const product =
+    PRODUK_LIST.find(p => p.id === Number(id)) ||
+    allMenuItems.find(p => p.id === Number(id)) ||
+    PRODUK_LIST[0];
+
+  const { addItem, toggleFavorite, isFavorite, setToast } = useCartStore();
+  const fav = isFavorite(product.id);
+  const [qty, setQty] = useState(1);
+  const [catatan, setCatatan] = useState("");
+
+  const handleAdd = () => {
+    for (let i = 0; i < qty; i++) {
+      addItem({
+        productId: product.id,
+        nama: product.nama,
+        harga: product.harga,
+        img: product.img,
+        toko: product.toko,
+        tokoId: product.tokoId,
+        varian: product.varian || "Original",
+        qty: 1,
+      });
+    }
+    // toast is triggered inside addItem
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-white">
-      <button onClick={() => router.back()} className="text-black absolute top-24 left-6 z-10 w-10 h-10 text-gray-600">
-        <i className="ri-arrow-left-line text-3xl" />
-      </button>
+    <div style={{ background: "#F5F4F0", minHeight: "100vh" }}>
+      <BuyerHeader />
 
-      <div className="bg-[#F5F5F5] rounded-md max-w-4xl w-full overflow-hidden relative flex flex-col md:flex-row p-6 md:p-8 gap-8">
-        <div className="w-full md:w-1/2 h-[300px] md:h-[450px] bg-orange-50 rounded-[1rem] flex items-center justify-center text-9xl">
-          🍗
-        </div>
-
-        <div className="w-full md:w-1/2 flex flex-col">
-          <div className="flex justify-between items-start">
-            <h1 className="text-3xl font-bold text-[#4A3933]">{produk.nama}</h1>
-            <button onClick={() => setLiked(!liked)}
-              className="flex items-center gap-1.5 text-gray-400 bg-gray-50 px-3 py-1 rounded-full border border-gray-100 cursor-pointer hover:bg-white active:scale-95">
-              <i className={`${liked ? "ri-heart-3-fill text-red-500" : "ri-heart-3-line text-gray-300"} transition-colors`} />
-              <span className="text-xs font-medium">{produk.suka + (liked ? 1 : 0)}</span>
-            </button>
-          </div>
-
-          <div className="flex items-center text-yellow-400 mt-1">
-            {[...Array(5)].map((_, i) => <i key={i} className="ri-star-s-fill" />)}
-            <span className="ml-2 w-4 h-3 bg-green-600 text-white text-[8px] rounded-full flex items-center justify-center">6</span>
-          </div>
-
-          <div className="mt-4 flex items-center gap-3">
-            <div className="bg-gradient-to-r from-[#ECDB9D] to-[#FFC800] px-4 py-2 rounded-md shadow-sm">
-              <span className="text-2xl font-black text-[#4A3933]">{formatRupiah(produk.harga)}</span>
-              <span className="text-[#585858] line-through font-semibold text-[12px] ml-2">{formatRupiah(produk.harga + 5000)}</span>
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-4 overflow-y-auto max-h-[200px] pr-2">
-            <div>
-              <h3 className="font-bold text-[#4A3933] text-lg">Deskripsi Rasa</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">{produk.deskripsi}</p>
-            </div>
-            <div>
-              <h3 className="font-bold text-[#4A3933] text-lg">Bahan Utama</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">Makanan ini mengandung bahan berkualitas tinggi pilihan dari toko {produk.toko}.</p>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <h3 className="font-bold text-[#4A3933] text-sm mb-2">Tambahkan Catatan</h3>
-            <div className="relative">
-              <i className="ri-file-list-3-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input type="text" placeholder="Tulis catatan di sini..."
-                className="w-full bg-[#F9F9F9] border border-gray-200 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none" />
-            </div>
-          </div>
-
-          <div className="mt-auto pt-6 flex items-center justify-between gap-4">
-            <div className="flex items-center bg-[#E5E5E5] rounded-lg p-1">
-              <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-8 h-8 font-bold text-xl text-gray-600">-</button>
-              <span className="w-10 text-center font-bold text-[#4A3933]">{qty}</span>
-              <button onClick={() => setQty(qty + 1)} className="w-8 h-8 font-bold text-xl text-gray-600">+</button>
-            </div>
-            <button onClick={() => showToast("Pesanan berhasil ditambahkan ke keranjang!")}
-              className="flex-1 bg-[#633A07] text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform">
-              Tambahkan Pesanan
-            </button>
-          </div>
-        </div>
+      {/* Back button — positioned outside card */}
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 32px 0" }}>
+        <button onClick={() => router.back()}
+          style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", color: "#555", fontSize: 15, fontWeight: 500, fontFamily: "Poppins,sans-serif", padding: 0, marginBottom: 20 }}>
+          <i className="ri-arrow-left-line" style={{ fontSize: 22 }} />
+        </button>
       </div>
 
-      {toast && (
-        <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[999] bg-[#633A07] text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3">
-          <i className="ri-checkbox-circle-fill text-green-400 text-xl" />
-          <span className="text-sm font-medium">{toast}</span>
-        </div>
-      )}
-    </div>
-  );
-}
+      {/* Main detail card */}
+      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "0 32px 60px" }}>
+        <div style={{ background: "white", borderRadius: 20, overflow: "hidden", boxShadow: "0 8px 40px rgba(0,0,0,0.08)", display: "grid", gridTemplateColumns: "1fr 1fr" }}>
 
-export default function DetailMenuPage() {
-  return (
-    <div>
-      <BuyerHeader />
-      <Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-400">Memuat...</div>}>
-        <DetailMenuContent />
-      </Suspense>
+          {/* ── Left: Image ── */}
+          <div style={{ position: "relative", minHeight: 500, overflow: "hidden" }}>
+            <img
+              src={product.img}
+              alt={product.nama}
+              style={{ width: "100%", height: "100%", objectFit: "cover", minHeight: 500 }}
+            />
+          </div>
+
+          {/* ── Right: Info ── */}
+          <div style={{ padding: "36px 40px", display: "flex", flexDirection: "column", overflowY: "auto", maxHeight: 680 }}>
+
+            {/* Title + Heart */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <h1 style={{ fontSize: 26, fontWeight: 900, color: "#1a1a1a", lineHeight: 1.25, flex: 1 }}>
+                {product.nama}
+              </h1>
+              <button
+                onClick={() => {
+                  toggleFavorite(product.id);
+                  if (!fav) setToast(product.nama + " ditambahkan ke favorit! ❤️");
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", marginLeft: 16, flexShrink: 0, padding: "4px 0" }}
+              >
+                <i className={fav ? "ri-heart-3-fill" : "ri-heart-3-line"}
+                  style={{ fontSize: 20, color: fav ? "#ef4444" : "#9ca3af", transition: "color 0.2s" }} />
+                <span style={{ fontSize: 13, color: "#9ca3af", fontWeight: 600 }}>
+                  {product.suka + (fav ? 1 : 0)}
+                </span>
+              </button>
+            </div>
+
+            {/* Stars */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 18 }}>
+              {[...Array(5)].map((_, i) => (
+                <i key={i} className="ri-star-s-fill"
+                  style={{ fontSize: 22, color: i < Math.floor(product.rating) ? "#EAB308" : "#e5e7eb" }} />
+              ))}
+              <span style={{ background: "#22C55E", color: "white", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, marginLeft: 6 }}>
+                {product.ulasan}
+              </span>
+            </div>
+
+            {/* Price badge */}
+            <div style={{ background: "linear-gradient(135deg,#ECDB9D,#FFC800)", borderRadius: 14, padding: "14px 22px", display: "inline-flex", alignItems: "baseline", gap: 12, marginBottom: 20, width: "fit-content" }}>
+              <span style={{ fontSize: 28, fontWeight: 900, color: "#3A2106" }}>
+                {formatRupiah(product.harga)}
+              </span>
+              {product.hargaAsli && (
+                <span style={{ color: "#7a5c1e", textDecoration: "line-through", fontSize: 15, fontWeight: 500 }}>
+                  {formatRupiah(product.hargaAsli)}
+                </span>
+              )}
+            </div>
+
+            {/* Short description */}
+            <p style={{ color: "#6b7280", fontSize: 14, lineHeight: 1.75, marginBottom: 20, textAlign: "justify" }}>
+              {product.deskripsi}
+            </p>
+
+            {/* Deskripsi Rasa */}
+            <div style={{ marginBottom: 18 }}>
+              <h3 style={{ fontWeight: 800, color: "#1a1a1a", fontSize: 17, marginBottom: 8 }}>Deskripsi Rasa</h3>
+              <p style={{ color: "#6b7280", fontSize: 13, lineHeight: 1.75, textAlign: "justify" }}>
+                {product.deskripsi}
+              </p>
+            </div>
+
+            {/* Bahan Utama */}
+            <div style={{ marginBottom: 22 }}>
+              <h3 style={{ fontWeight: 800, color: "#1a1a1a", fontSize: 17, marginBottom: 8 }}>Bahan Utama</h3>
+              <p style={{ color: "#6b7280", fontSize: 13, lineHeight: 1.75, textAlign: "justify" }}>
+                {product.bahan
+                  ? `Makanan ini mengandung: ${product.bahan}.`
+                  : `Makanan ini mengandung bahan-bahan segar berkualitas tinggi dari ${product.toko}.`}
+              </p>
+            </div>
+
+            {/* Tambahkan Catatan */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", display: "block", marginBottom: 10 }}>
+                Tambahkan Catatan
+              </label>
+              <div style={{ position: "relative" }}>
+                <i className="ri-file-list-3-line" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: 16, pointerEvents: "none" }} />
+                <input
+                  type="text"
+                  placeholder="Tulis catatan di sini..."
+                  value={catatan}
+                  onChange={e => setCatatan(e.target.value)}
+                  style={{ width: "100%", padding: "11px 16px 11px 42px", border: "1.5px solid #e9e7e3", borderRadius: 999, fontSize: 13, outline: "none", fontFamily: "Poppins,sans-serif", boxSizing: "border-box", transition: "border-color 0.2s" }}
+                  onFocus={e => (e.target.style.borderColor = "#BFA370")}
+                  onBlur={e => (e.target.style.borderColor = "#e9e7e3")}
+                />
+              </div>
+            </div>
+
+            {/* Qty + Add to cart */}
+            <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: "auto" }}>
+              {/* Qty stepper */}
+              <div style={{ display: "flex", alignItems: "center", background: "#f1f0ee", borderRadius: 12, padding: "3px", flexShrink: 0 }}>
+                <button
+                  onClick={() => setQty(q => Math.max(1, q - 1))}
+                  style={{ width: 40, height: 40, borderRadius: 10, border: "none", background: "none", cursor: "pointer", fontWeight: 700, fontSize: 22, color: "#555", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s" }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(191,163,112,0.2)")}
+                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
+                >−</button>
+                <span style={{ width: 44, textAlign: "center", fontWeight: 800, color: "#1a1a1a", fontSize: 18 }}>{qty}</span>
+                <button
+                  onClick={() => setQty(q => q + 1)}
+                  style={{ width: 40, height: 40, borderRadius: 10, border: "none", background: "none", cursor: "pointer", fontWeight: 700, fontSize: 22, color: "#555", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s" }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(191,163,112,0.2)")}
+                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
+                >+</button>
+              </div>
+
+              {/* Add to cart button */}
+              <button
+                onClick={handleAdd}
+                style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: "none", background: "linear-gradient(135deg,#3A2106,#5a3510)", color: "white", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "Poppins,sans-serif", boxShadow: "0 8px 24px rgba(58,33,6,0.3)", transition: "all 0.2s" }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform = "translateY(-2px)"; el.style.boxShadow = "0 12px 32px rgba(58,33,6,0.4)"; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform = ""; el.style.boxShadow = "0 8px 24px rgba(58,33,6,0.3)"; }}
+              >
+                Tambahkan Pesanan
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Meta info below card */}
+        <div style={{ marginTop: 16, display: "flex", gap: 20, fontSize: 12, color: "#9ca3af", padding: "0 4px" }}>
+          <span><i className="ri-store-2-line" style={{ marginRight: 4 }} />{product.toko}</span>
+          <span>•</span>
+          <span>{product.terjual} terjual</span>
+          <span>•</span>
+          <span>{product.jarak} | {product.waktu}</span>
+          {product.varian && <><span>•</span><span>Varian: {product.varian}</span></>}
+        </div>
+      </main>
     </div>
   );
 }
